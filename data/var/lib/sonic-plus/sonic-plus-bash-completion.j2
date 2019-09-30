@@ -1,0 +1,8 @@
+_{{ schema.name }}_completion() {
+    COMPREPLY=( $( env COMP_WORDS="${COMP_WORDS[*]}" \
+                   COMP_CWORD=$COMP_CWORD \
+                   _{{ schema.name | upper }}_COMPLETE=complete $1 ) )
+    return 1
+}
+
+complete -F _{{ schema.name }}_completion -o default {{ schema.name }};

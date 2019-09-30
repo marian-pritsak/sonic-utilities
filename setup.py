@@ -37,6 +37,7 @@ setup(
         'crm',
         'debug',
         'pfcwd',
+        'sonic_plus',
         'sfputil',
         'ssdutil',
         'pfc',
@@ -88,7 +89,7 @@ setup(
         'scripts/watermarkcfg'
     ],
     data_files=[
-        ('/etc/bash_completion.d', glob.glob('data/etc/bash_completion.d/*')),
+        ('/etc/bash_completion.d', glob.glob('data/etc/bash_completion.d/*')), ('/var/lib/sonic-plus', glob.glob('data/var/lib/sonic-plus/*')),
     ],
     entry_points={
         'console_scripts': [
@@ -100,6 +101,7 @@ setup(
             'crm = crm.main:cli',
             'debug = debug.main:cli',
             'pfcwd = pfcwd.main:cli',
+            'sonic-plus = sonic_plus.main:cli',
             'sfputil = sfputil.main:cli',
             'ssdutil = ssdutil.main:ssdutil',
             'pfc = pfc.main:cli',

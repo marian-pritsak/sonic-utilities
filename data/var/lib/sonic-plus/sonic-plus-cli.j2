@@ -1,0 +1,107 @@
+#! /usr/bin/python -u
+
+import os
+import click
+import swsssdk
+from natsort import natsorted
+from tabulate import tabulate
+
+@click.group()
+def cli():
+    """ {{ schema.name }}. {{ schema.description }} """
+
+
+@cli.group()
+def show():
+    """ Create {{ schema.name }} entries. {{ schema.description }} """
+
+
+@cli.group()
+def create():
+    """ Show {{ schema.name }} entries. {{ schema.description }} """
+
+
+@cli.group()
+def remove():
+    """ Show {{ schema.name }} entries. {{ schema.description }} """
+
+{% for key in schema['keys'] %}
+@create.command()
+@click.argument('name', type=click.STRING)
+{%- for field in key.fields %}
+{%- if field.optional != 'true' %}
+{%- if field.type == 'choice' %}
+@click.argument('{{ field.name }}', type=click.Choice({{ field.choice_list }}))
+{%- elif field.type == 'string' %}
+@click.argument('{{ field.name }}', type=click.STRING)
+{%- elif field.type == 'int' %}
+@click.argument('{{ field.name }}', type=click.INT)
+{%- elif field.type == 'intrange' %}
+@click.argument('{{ field.name }}', type=click.IntRange({{ field.int_min }}, {{ field.int_max }})
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+def {{ key.name | lower | replace(schema.name + "_", "") }}(name{% for field in key.fields %},{{field.name}}{% endfor %}):
+    """ Create {{ key.name | lower | replace(schema.name + "_", "") }}. {{ key.description }}\f
+{%- for field in key.fields %}
+{%- if field.optional != 'true' %}
+    {{ field.name | upper }} {{ field.description }}\f
+{%- endif %}
+{%- endfor %}
+    """
+    if os.geteuid() != 0:
+        exit("Root privileges are required for this operation")
+    configdb = swsssdk.ConfigDBConnector()
+    configdb.connect()
+    {{ key.name }}_info = {
+{%- for field in key.fields %}
+{%- if field.optional != 'true' %}
+        '{{ field.name}}': {{ field.name }},
+{%- endif %}
+{%- endfor %}
+        }
+    configdb.mod_entry("{{ key.name }}", name, {{ key.name }}_info)
+
+    click.echo("Entry created in CONFIG_DB")
+
+
+@show.command()
+def {{ key.name | lower | replace(schema.name + "_", "") }}():
+    """ Show {{ key.name | lower | replace(schema.name + "_", "") }} entries. {{ key.description }} """
+    configdb = swsssdk.ConfigDBConnector()
+    configdb.connect()
+
+    table = configdb.get_table('{{ key.name }}')
+    header = ["{{ key.name | lower | replace(schema.name + "_", "") | upper }}"{% for field in key.fields %},"{{ field.name | upper }}"{% endfor %}]
+    lines = []
+    for key in table:
+        lines.append([
+            key,
+{%- for field in key.fields %}
+            table[key]["{{ field.name }}"],
+{%- endfor %}
+         ])
+
+    click.echo(tabulate(lines, header))
+
+
+@remove.command()
+@click.argument('name', type=click.STRING)
+def {{ key.name | lower | replace(schema.name + "_", "") }}(name):
+    """ Remove {{ key.name | lower | replace(schema.name + "_", "") }} entries. {{ key.description }} """
+    configdb = swsssdk.ConfigDBConnector()
+    configdb.connect()
+
+    if name not in configdb.get_keys('{{ key.name }}'):
+        click.echo("Entry %s does not exist" % name)
+        click.Abort()
+
+    configdb.set_entry('{{ key.name }}', name, None)
+
+    click.echo("Entry removed from CONFIG_DB")
+
+
+{% endfor %}
+
+if __name__ == '__main__':
+    cli()

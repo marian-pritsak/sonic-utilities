@@ -1,0 +1,9 @@
+_sonic_plus_completion() {
+    COMPREPLY=( $( env COMP_WORDS="${COMP_WORDS[*]}" \
+                   COMP_CWORD=$COMP_CWORD \
+                   _SONIC_PLUS_COMPLETE=complete $1 ) )
+    return 1
+}
+
+complete -F _sonic_plus_completion -o default sonic-plus;
+

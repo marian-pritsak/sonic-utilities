@@ -1,0 +1,12 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+# EASY-INSTALL-ENTRY-SCRIPT: 'sonic-utilities==1.2','console_scripts','{{ schema.name }}'
+__requires__ = 'sonic-utilities==1.2'
+import re
+import sys
+
+from {{ schema.name }}.main import cli
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(cli())
