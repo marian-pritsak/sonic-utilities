@@ -197,9 +197,6 @@ def addrepo(name, repo):
     metadata['description'] = repo
     repo_dict[name] = metadata
 
-    click.echo("Repos")
-    click.echo(repo_dict)
-
     with open(REPO_PATH, 'w') as repo_file:
         json.dump(repo_dict, repo_file)
 

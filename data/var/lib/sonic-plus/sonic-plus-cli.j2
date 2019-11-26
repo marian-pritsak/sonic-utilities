@@ -2,9 +2,19 @@
 
 import os
 import click
+import docker
 import swsssdk
 from natsort import natsorted
 from tabulate import tabulate
+
+def run_command(command):
+    proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+    (out, err) = proc.communicate()
+
+    click.echo(out)
+
+    if proc.returncode != 0:
+        sys.exit(proc.returncode)
 
 @click.group()
 def cli():
@@ -43,6 +53,9 @@ def remove():
 {%- endfor %}
 def {{ key.name | lower | replace(schema.name + "_", "") }}(name{% for field in key.fields %},{{field.name}}{% endfor %}):
     """ Create {{ key.name | lower | replace(schema.name + "_", "") }}. {{ key.description }}\f
+{%- if "predefined_keys" in key %}
+    NAME (one of {% for predef in key.predefined_keys %}{{predef.name}}{{ "/" if not loop.last }}{% endfor %})\f
+{%- endif %}
 {%- for field in key.fields %}
 {%- if field.optional != 'true' %}
     {{ field.name | upper }} {{ field.description }}\f
@@ -51,6 +64,10 @@ def {{ key.name | lower | replace(schema.name + "_", "") }}(name{% for field in 
     """
     if os.geteuid() != 0:
         exit("Root privileges are required for this operation")
+{%- if "predefined_keys" in key %}
+    if name not in {{ key.predefined_keys | map(attribute='name') | list }}:
+        exit("Name %s is not valid, only {{ key.predefined_keys | map(attribute='name') | join(',') }} are allowed" % name)
+{%- endif %}
     configdb = swsssdk.ConfigDBConnector()
     configdb.connect()
     {{ key.name }}_info = {
@@ -102,6 +119,33 @@ def {{ key.name | lower | replace(schema.name + "_", "") }}(name):
 
 
 {% endfor %}
+{% for cmd in schema.additional_commands %}
+@cli.command()
+{%- for arg in cmd.args %}
+@click.argument('{{arg.name}}', type=click.STRING)
+{%- endfor %}
+def {{ cmd.name }}({{ cmd.args|map(attribute='name')|join(',')}}):
+    """
+    {{cmd.name}}.\f
+{%- for arg in cmd.args %}
+    {{arg.name|upper}} {{arg.description}}
+{%- endfor %}
 
+    """
+    # TODO: check if installed
+    docker_client = docker.from_env()
+    docker_api_client = docker.APIClient(base_url='unix://var/run/docker.sock')
+
+
+    try:
+        output = docker_client.containers.run("marianpritsak/wjh", {{ cmd.args|map(attribute='name')|join(' + " " + ')}}, remove = True, entrypoint = '{{cmd.cmd}}')
+    except:
+        click.echo("Command failed")
+        raise click.Abort()
+
+    click.echo(output)
+
+
+{% endfor %}
 if __name__ == '__main__':
     cli()
